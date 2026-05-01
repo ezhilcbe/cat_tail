@@ -13,7 +13,39 @@ document.addEventListener("DOMContentLoaded", () => {
     return paragraph;
   }
 
-  function createParticipantsSection(participants) {
+  async function unregisterParticipant(activityName, email) {
+    try {
+      const response = await fetch(
+        `/activities/${encodeURIComponent(activityName)}/participants?email=${encodeURIComponent(email)}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      const result = await response.json();
+
+      if (response.ok) {
+        messageDiv.textContent = result.message;
+        messageDiv.className = "success";
+        await fetchActivities();
+      } else {
+        messageDiv.textContent = result.detail || "An error occurred";
+        messageDiv.className = "error";
+      }
+
+      messageDiv.classList.remove("hidden");
+      setTimeout(() => {
+        messageDiv.classList.add("hidden");
+      }, 5000);
+    } catch (error) {
+      messageDiv.textContent = "Failed to unregister participant. Please try again.";
+      messageDiv.className = "error";
+      messageDiv.classList.remove("hidden");
+      console.error("Error unregistering participant:", error);
+    }
+  }
+
+  function createParticipantsSection(activityName, participants) {
     const section = document.createElement("div");
     section.className = "participants-section";
 
@@ -35,7 +67,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
     participants.forEach((participant) => {
       const item = document.createElement("li");
-      item.textContent = participant;
+      item.className = "participant-item";
+
+      const emailText = document.createElement("span");
+      emailText.className = "participant-email";
+      emailText.textContent = participant;
+
+      const removeButton = document.createElement("button");
+      removeButton.type = "button";
+      removeButton.className = "remove-participant-button";
+      removeButton.innerHTML = "&times;";
+      removeButton.title = `Unregister ${participant}`;
+      removeButton.setAttribute("aria-label", `Unregister ${participant}`);
+      removeButton.addEventListener("click", () => {
+        unregisterParticipant(activityName, participant);
+      });
+
+      item.appendChild(emailText);
+      item.appendChild(removeButton);
       list.appendChild(item);
     });
 
@@ -58,7 +107,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const spotsLeft = details.max_participants - details.participants.length;
     activityCard.appendChild(createDetailRow("Schedule", details.schedule));
     activityCard.appendChild(createDetailRow("Availability", `${spotsLeft} spots left`));
-    activityCard.appendChild(createParticipantsSection(details.participants));
+    activityCard.appendChild(createParticipantsSection(name, details.participants));
 
     return activityCard;
   }
@@ -66,7 +115,9 @@ document.addEventListener("DOMContentLoaded", () => {
   // Function to fetch activities from API
   async function fetchActivities() {
     try {
-      const response = await fetch("/activities");
+      const response = await fetch(`/activities?ts=${Date.now()}`, {
+        cache: "no-store",
+      });
       const activities = await response.json();
 
       // Clear loading message
