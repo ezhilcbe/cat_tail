@@ -4,6 +4,65 @@ document.addEventListener("DOMContentLoaded", () => {
   const signupForm = document.getElementById("signup-form");
   const messageDiv = document.getElementById("message");
 
+  function createDetailRow(label, value) {
+    const paragraph = document.createElement("p");
+    const strong = document.createElement("strong");
+    strong.textContent = `${label}: `;
+    paragraph.appendChild(strong);
+    paragraph.append(value);
+    return paragraph;
+  }
+
+  function createParticipantsSection(participants) {
+    const section = document.createElement("div");
+    section.className = "participants-section";
+
+    const title = document.createElement("p");
+    title.className = "participants-title";
+    title.textContent = "Participants";
+    section.appendChild(title);
+
+    if (!participants.length) {
+      const emptyState = document.createElement("p");
+      emptyState.className = "participants-empty";
+      emptyState.textContent = "No one has signed up yet.";
+      section.appendChild(emptyState);
+      return section;
+    }
+
+    const list = document.createElement("ul");
+    list.className = "participants-list";
+
+    participants.forEach((participant) => {
+      const item = document.createElement("li");
+      item.textContent = participant;
+      list.appendChild(item);
+    });
+
+    section.appendChild(list);
+    return section;
+  }
+
+  function renderActivityCard(name, details) {
+    const activityCard = document.createElement("div");
+    activityCard.className = "activity-card";
+
+    const title = document.createElement("h4");
+    title.textContent = name;
+    activityCard.appendChild(title);
+
+    const description = document.createElement("p");
+    description.textContent = details.description;
+    activityCard.appendChild(description);
+
+    const spotsLeft = details.max_participants - details.participants.length;
+    activityCard.appendChild(createDetailRow("Schedule", details.schedule));
+    activityCard.appendChild(createDetailRow("Availability", `${spotsLeft} spots left`));
+    activityCard.appendChild(createParticipantsSection(details.participants));
+
+    return activityCard;
+  }
+
   // Function to fetch activities from API
   async function fetchActivities() {
     try {
@@ -12,22 +71,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Clear loading message
       activitiesList.innerHTML = "";
+      activitySelect.innerHTML = '<option value="">-- Select an activity --</option>';
 
       // Populate activities list
       Object.entries(activities).forEach(([name, details]) => {
-        const activityCard = document.createElement("div");
-        activityCard.className = "activity-card";
-
-        const spotsLeft = details.max_participants - details.participants.length;
-
-        activityCard.innerHTML = `
-          <h4>${name}</h4>
-          <p>${details.description}</p>
-          <p><strong>Schedule:</strong> ${details.schedule}</p>
-          <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
-        `;
-
-        activitiesList.appendChild(activityCard);
+        activitiesList.appendChild(renderActivityCard(name, details));
 
         // Add option to select dropdown
         const option = document.createElement("option");
@@ -62,6 +110,7 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+        await fetchActivities();
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
